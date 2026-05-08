@@ -29,6 +29,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Generate an easy-imagegen output package.")
     parser.add_argument("command", nargs="?", default="generate", choices=["generate", "doctor", "setup"])
     parser.add_argument("--prompt", help="User image request.")
+    parser.add_argument("--prompt-file", help="Read the image prompt exactly from this UTF-8 text file.")
     parser.add_argument("--count", type=int, default=1, help="Number of prompt variants.")
     parser.add_argument("--style", default="auto", help="Style preset name.")
     parser.add_argument("--size", default="1024x1024", help="Requested image size.")
@@ -255,6 +256,16 @@ def run_setup(args):
     return 0
 
 
+def resolve_prompt(args):
+    if args.prompt and args.prompt_file:
+        raise SystemExit("Use either --prompt or --prompt-file, not both.")
+    if args.prompt_file:
+        return Path(args.prompt_file).read_text(encoding="utf-8").strip()
+    if args.prompt:
+        return args.prompt
+    raise SystemExit("--prompt or --prompt-file is required for generate")
+
+
 def call_image_api(prompt, size):
     config = api_config()
     payload = {
@@ -342,9 +353,7 @@ def main():
         return run_doctor()
     if args.command == "setup":
         return run_setup(args)
-    if not args.prompt:
-        print("--prompt is required for generate", file=sys.stderr)
-        return 2
+    user_prompt = resolve_prompt(args)
     if args.count < 1:
         print("--count must be at least 1", file=sys.stderr)
         return 2
@@ -359,7 +368,7 @@ def main():
                 "id": f"image-{index + 1:02d}",
                 "style": args.style,
                 "size": args.size,
-                "prompt": build_prompt(args.prompt, args.style, index, args.count, args.enhance_prompt),
+                "prompt": build_prompt(user_prompt, args.style, index, args.count, args.enhance_prompt),
             }
             for index in range(args.count)
         ]

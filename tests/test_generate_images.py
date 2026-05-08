@@ -119,6 +119,30 @@ class GenerateImagesTest(unittest.TestCase):
             self.assertIn(user_prompt, prompts["items"][0]["prompt"])
             self.assertIn("Style direction:", prompts["items"][0]["prompt"])
 
+    def test_prompt_file_preserves_text_exactly(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "run"
+            prompt_path = Path(tmp) / "prompt.txt"
+            user_prompt = "淘宝电商主图，极简科技风，深色背景。主视觉：一部手机显示APP界面。"
+            prompt_path.write_text(user_prompt, encoding="utf-8")
+
+            self.run_script(
+                [
+                    "--prompt-file",
+                    str(prompt_path),
+                    "--style",
+                    "product",
+                    "--output-dir",
+                    str(output_dir),
+                    "--backend",
+                    "prompt-only",
+                ]
+            )
+
+            prompts = json.loads((output_dir / "prompts.json").read_text())
+
+            self.assertEqual(prompts["items"][0]["prompt"], user_prompt)
+
     def test_auto_backend_uses_codex_auth_when_available(self):
         with tempfile.TemporaryDirectory() as tmp:
             codex_home = Path(tmp) / "codex-home"

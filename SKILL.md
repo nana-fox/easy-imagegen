@@ -20,24 +20,34 @@ Do not require native image libraries, Python packages, Docker, LibreOffice, or 
 
 ## Quick Flow
 
-1. Clarify only the missing essentials: subject, use case, count, size, and style.
-2. Use the user's prompt as written by default. Only rewrite or enhance it when
-   the user explicitly asks for prompt optimization, style polishing, or agent
-   help. For CLI enhancement, pass `--enhance-prompt`.
-3. If native image generation is available, generate images directly and save them under `outputs/<timestamp>/images/`.
-4. If the user asks for API mode, or native generation is unavailable and an API key is available from skill `.env`, environment variables, or Codex auth, run:
+1. Clarify only missing operational essentials such as count, size, output path,
+   or backend. Do not add visual details, text copy, selling points, colors, or
+   layout elements that the user did not provide.
+2. Use the user's prompt as written by default. The string passed to
+   `--prompt` or `--prompt-file` must match the user's requested image prompt
+   except for shell escaping/quoting. Only rewrite or enhance it when the user
+   explicitly asks for prompt optimization, style polishing, or agent help. For
+   CLI enhancement, pass `--enhance-prompt`.
+3. For long prompts, prompts containing quotes, or prompts where exact wording
+   matters, write the user's prompt verbatim to a UTF-8 text file and call:
+
+   ```bash
+   python scripts/generate_images.py --prompt-file /path/to/prompt.txt
+   ```
+4. If native image generation is available, generate images directly and save them under `outputs/<timestamp>/images/`.
+5. If the user asks for API mode, or native generation is unavailable and an API key is available from skill `.env`, environment variables, or Codex auth, run:
 
    ```bash
    python scripts/generate_images.py --backend api --prompt "<request>" --count 1 --style auto
    ```
 
-5. If no generator is available, run prompt-only mode:
+6. If no generator is available, run prompt-only mode:
 
    ```bash
    python scripts/generate_images.py --backend prompt-only --prompt "<request>" --count 1 --style auto
    ```
 
-6. Return the output directory and mention `index.html`, `manifest.json`, and `prompts.json`.
+7. Return the output directory and mention `index.html`, `manifest.json`, and `prompts.json`.
 
 ## Claude Code Workflow
 
@@ -52,6 +62,12 @@ If `Backend: api`, generate directly:
 
 ```bash
 python scripts/generate_images.py --prompt "<request>" --count 1 --style auto
+```
+
+For exact long prompts, prefer:
+
+```bash
+python scripts/generate_images.py --prompt-file prompt.txt --count 1 --style auto
 ```
 
 If `Backend: prompt-only`, configure `IMAGEGEN_API_KEY` in this skill's `.env`
@@ -147,6 +163,7 @@ asks for prompt optimization or style guidance.
 - Do not make the user configure an API key unless they ask for API mode or native generation is unavailable.
 - Do not install dependencies for the default flow.
 - Do not expose backend details unless needed to recover from failure.
+- Do not rewrite, expand, translate, or add marketing copy to the user's image prompt unless the user explicitly asks for prompt optimization.
 - For multiple images, generate or package a small first batch when the direction is uncertain.
 - Always preserve the final prompt text in `prompts.json`.
 - On API failure, keep any successful images and write `errors.json`.

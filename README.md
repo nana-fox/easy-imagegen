@@ -136,7 +136,19 @@ python scripts/generate_images.py \
   --style illustration
 ```
 
-默认会完全按输入提示词生成，不追加任何风格说明。
+长提示词或需要逐字保留时，建议用文件传递：
+
+```bash
+cat > prompt.txt <<'EOF'
+淘宝电商主图，极简科技风，深色背景。主视觉：一部手机显示APP界面。
+EOF
+
+python scripts/generate_images.py \
+  --prompt-file prompt.txt \
+  --style product
+```
+
+默认会完全按输入提示词生成，不追加任何风格说明。agent 也不应该替你扩写卖点、文案或视觉细节，除非你明确要求“优化提示词”。
 如果你希望让脚本追加一小段风格和质量方向：
 
 ```bash
