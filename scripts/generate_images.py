@@ -29,7 +29,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Generate an easy-imagegen output package.")
     parser.add_argument("command", nargs="?", default="generate", choices=["generate", "doctor", "setup"])
     parser.add_argument("--prompt", help="User image request.")
-    parser.add_argument("--prompt-file", help="Read the image prompt exactly from this UTF-8 text file.")
+    parser.add_argument("--prompt-file", help="Read the final image prompt from this UTF-8 text file.")
     parser.add_argument("--count", type=int, default=1, help="Number of prompt variants.")
     parser.add_argument("--style", default="auto", help="Style preset name.")
     parser.add_argument("--size", default="1024x1024", help="Requested image size.")
@@ -46,7 +46,7 @@ def parse_args():
 
 def default_output_dir():
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return Path("outputs") / stamp
+    return Path.cwd() / "easy-imagegen-outputs" / stamp
 
 
 def build_prompt(user_prompt, style, index, count, enhance_prompt=False):
@@ -347,6 +347,37 @@ def render_gallery(prompts, image_files, manifest):
 """
 
 
+def render_result_readme(prompts, image_files, manifest, has_errors):
+    lines = [
+        "# easy-imagegen result",
+        "",
+        f"Status: {manifest['status']}",
+        f"Backend: {manifest['backend']}",
+        f"Model: {manifest.get('api', {}).get('model', 'not used')}",
+        f"Size: {manifest['size']}",
+        f"Style: {manifest['style']}",
+        f"Count: {manifest['count']}",
+        "",
+        "## Open",
+        "",
+        "Preview: index.html",
+        "Prompt record: prompts.json",
+        "Manifest: manifest.json",
+    ]
+    if has_errors:
+        lines.append("Errors: errors.json")
+
+    lines.extend(["", "## Images", ""])
+    for item in prompts["items"]:
+        image_name = image_files.get(item["id"])
+        image_path = f"images/{image_name}" if image_name else "not generated yet"
+        lines.append(f"Image: {image_path}")
+        lines.append(f"Prompt: {item['prompt']}")
+        lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def main():
     args = parse_args()
     if args.command == "doctor":
@@ -410,6 +441,10 @@ def main():
     write_json(output_dir / "prompts.json", prompts)
     write_json(output_dir / "manifest.json", manifest)
     (output_dir / "index.html").write_text(render_gallery(prompts, image_files, manifest), encoding="utf-8")
+    (output_dir / "README.md").write_text(
+        render_result_readme(prompts, image_files, manifest, bool(errors)),
+        encoding="utf-8",
+    )
 
     if args.dry_run:
         print(f"Dry-run output created: {output_dir}")
@@ -417,6 +452,9 @@ def main():
         print(f"Prompt-only output created: {output_dir}")
     else:
         print(f"Image output created: {output_dir} ({status})")
+    print(f"Preview: {output_dir / 'index.html'}")
+    print(f"Result README: {output_dir / 'README.md'}")
+    print(f"Prompt record: {output_dir / 'prompts.json'}")
     return 0
 
 

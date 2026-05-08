@@ -36,6 +36,30 @@ class GenerateImagesTest(unittest.TestCase):
             env=clean_env,
         )
 
+    def run_script_in_cwd(self, cwd, args, env=None):
+        clean_env = os.environ.copy()
+        for key in (
+            "IMAGEGEN_API_KEY",
+            "IMAGEGEN_BASE_URL",
+            "IMAGEGEN_MODEL",
+            "IMAGEGEN_QUALITY",
+            "OPENAI_API_KEY",
+            "OPENAI_BASE_URL",
+            "CODEX_HOME",
+        ):
+            clean_env.pop(key, None)
+        if env:
+            clean_env.update(env)
+        clean_env.setdefault("IMAGEGEN_DISABLE_SKILL_ENV", "1")
+        return subprocess.run(
+            [sys.executable, str(SCRIPT), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=clean_env,
+            cwd=cwd,
+        )
+
     def run_installed_like_script(self, skill_dir, args, env=None):
         clean_env = os.environ.copy()
         for key in (
@@ -95,6 +119,29 @@ class GenerateImagesTest(unittest.TestCase):
             self.assertIn("Prompt-only output created", result.stdout)
             self.assertIn("ceramic mug", index_html)
 
+    def test_default_output_dir_is_under_current_working_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cwd = Path(tmp)
+
+            result = self.run_script_in_cwd(
+                cwd,
+                [
+                    "--prompt",
+                    "A cute little fox",
+                    "--backend",
+                    "prompt-only",
+                ],
+            )
+
+            output_root = cwd / "easy-imagegen-outputs"
+            runs = list(output_root.iterdir())
+
+            self.assertEqual(len(runs), 1)
+            self.assertTrue((runs[0] / "README.md").exists())
+            self.assertTrue((runs[0] / "manifest.json").exists())
+            self.assertIn(str(output_root), result.stdout)
+            self.assertIn("Image:", (runs[0] / "README.md").read_text())
+
     def test_enhance_prompt_appends_style_guidance_when_requested(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "run"
@@ -119,7 +166,7 @@ class GenerateImagesTest(unittest.TestCase):
             self.assertIn(user_prompt, prompts["items"][0]["prompt"])
             self.assertIn("Style direction:", prompts["items"][0]["prompt"])
 
-    def test_prompt_file_preserves_text_exactly(self):
+    def test_prompt_file_uses_final_prompt_text(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "run"
             prompt_path = Path(tmp) / "prompt.txt"

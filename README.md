@@ -8,16 +8,16 @@
 
 ## 能做什么
 
-- **一句话出图**：默认按用户给的 prompt 生成，并保存输出结果。
+- **一句话出图**：用户描述想要的图片，agent 负责整理成适合生图的最终 prompt。
 - **默认 `gpt-image-2`**：未显式配置 `IMAGEGEN_MODEL` 时使用 `gpt-image-2`。
 - **Codex 零配置优先**：自动读取 `~/.codex/auth.json` 和 `~/.codex/config.toml`，复用当前 Codex API key 与 provider `base_url`。
 - **Claude Code 可一次配置**：没有 Codex 配置时，用 `setup` 写入 skill-local `.env`。
 - **OpenAI-compatible API**：支持 OpenAI、Azure/OpenAI-compatible router、LiteLLM、new-api、自建中转等 `/images/generations` 接口。
 - **不会误吃密钥**：只读取环境变量、skill 自己目录的 `.env`、Codex auth/config；不会向上递归读取项目根目录 `.env`。
-- **可审阅输出包**：每次生成或降级都会保留 `index.html`、`manifest.json`、`prompts.json`。
+- **可审阅输出包**：每次生成或降级都会保留 `README.md`、`index.html`、`manifest.json`、`prompts.json`。
 - **Prompt-only 兜底**：没有可用图片后端时不假装成功，而是输出可复制的 prompt 包。
 - **可选提示词增强**：只有显式使用 `--enhance-prompt` 时，才追加轻量风格方向。
-- **默认不改提示词**：用户输入的图片描述就是最终 prompt。
+- **不乱改需求**：可以轻量整理口语化描述，但不能擅自改变主体、风格、尺寸、文案或关键限制。
 
 ---
 
@@ -128,13 +128,18 @@ python scripts/generate_images.py doctor
 
 agent 会按 `SKILL.md` 的流程选择后端、生成或降级，并告诉你输出目录。
 
-Agent 调用时必须把你的原始提示词逐字写入 `prompt.txt`，再用
-`--prompt-file prompt.txt` 调用脚本。除非你明确要求“优化提示词”，否则
-agent 不应该扩写、翻译、润色或补充新的营销文案。
+你不需要自己写文件、选参数或理解后端。agent 会判断最终生图 prompt：
+
+- 如果你的描述已经清楚，就直接使用。
+- 如果你的描述是口语化请求，就轻量整理成更适合图片模型的 prompt。
+- 不会擅自改主体、风格、尺寸、图片里的文字、品牌、卖点或负面约束。
+- 如果你明确说“不要改 prompt”或“原样使用”，agent 应该直接使用你的原文。
+
+每次实际使用的最终 prompt 都会记录在输出目录的 `prompts.json`。
 
 ### 直接用 CLI
 
-短提示词可以直接传 `--prompt`：
+短提示词可以直接传 `--prompt`。这里传入的是最终生图 prompt：
 
 ```bash
 python scripts/generate_images.py \
@@ -143,7 +148,7 @@ python scripts/generate_images.py \
   --style illustration
 ```
 
-长提示词或需要逐字保留时，建议用文件传递：
+长提示词、多行提示词，或包含较多引号/标点时，建议用文件传递，避免 shell 转义问题：
 
 ```bash
 cat > prompt.txt <<'EOF'
@@ -155,8 +160,8 @@ python scripts/generate_images.py \
   --style product
 ```
 
-默认会完全按输入提示词生成，不追加任何风格说明。agent 也不应该替你扩写卖点、文案或视觉细节，除非你明确要求“优化提示词”。
-如果你希望让脚本追加一小段风格和质量方向：
+脚本默认不会再加工 `--prompt` 或 `--prompt-file` 传入的内容；agent 应在调用脚本前完成必要判断。
+如果你希望脚本追加一小段固定风格和质量方向：
 
 ```bash
 python scripts/generate_images.py \
@@ -172,7 +177,7 @@ python scripts/generate_images.py \
   --prompt "A clean product photo of a ceramic mug on a desk" \
   --count 2 \
   --style product \
-  --output-dir outputs/mug-test
+  --output-dir easy-imagegen-outputs/mug-test
 ```
 
 ---
@@ -180,9 +185,10 @@ python scripts/generate_images.py \
 ## 输出结构
 
 ```text
-outputs/<timestamp>/
+easy-imagegen-outputs/<timestamp>/
   images/
     image-01.png        # 生成成功时存在
+  README.md             # 人类可读结果说明
   index.html            # 可浏览预览页
   manifest.json         # 后端、状态、模型、输出文件
   prompts.json          # 每张图最终 prompt
@@ -210,6 +216,14 @@ outputs/<timestamp>/
   }
 }
 ```
+
+---
+
+## 尺寸怎么处理
+
+默认尺寸是 `1024x1024`。如果用户明确说了尺寸，比如 `2000x2000`，agent 应该把它作为 `--size 2000x2000` 传给脚本，不要静默改成 `1024x1024`、`1024x1536`、`1536x1024` 或 `auto`。这些可以作为常用选项推荐，但不能替换用户需求。
+
+如果接口不接受某个尺寸，输出目录会保留 `errors.json`，agent 再把接口返回的失败原因告诉用户。
 
 ---
 
@@ -251,13 +265,13 @@ IMAGEGEN_QUALITY=high
 脚本当前内置的实际风格提示在 `scripts/generate_images.py` 的 `STYLE_HINTS` 中，`styles/*.md` 是给 agent 和用户阅读的说明文件。使用 `--enhance-prompt` 时最终 prompt 会是：
 
 ```text
-<你的原始提示词>
+<最终 prompt>
 
 Style direction: <所选风格的一句话方向>
 Create a high-quality raster image. Avoid text unless explicitly requested.
 ```
 
-不使用 `--enhance-prompt` 时，最终 prompt 就是用户输入的文本。
+不使用 `--enhance-prompt` 时，脚本不会追加风格说明，直接使用 agent 传入的最终 prompt。
 
 ---
 
