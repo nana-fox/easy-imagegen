@@ -18,36 +18,36 @@ Make image generation feel immediate:
 
 Do not require native image libraries, Python packages, Docker, LibreOffice, or an API key for the default path.
 
+## Hard Rule: Do Not Rewrite Prompts
+
+By default, the user's image description is the final image prompt.
+
+Do not rewrite it. Do not translate it. Do not improve it. Do not add examples,
+marketing copy, UI details, selling points, colors, mood words, safety language,
+or extra composition details.
+
+Only change the prompt if the user explicitly says they want prompt optimization,
+prompt polishing, rewrite, expansion, translation, or style enhancement.
+
 ## Quick Flow
 
-1. Clarify only missing operational essentials such as count, size, output path,
-   or backend. Do not add visual details, text copy, selling points, colors, or
-   layout elements that the user did not provide.
-2. Use the user's prompt as written by default. The string passed to
-   `--prompt` or `--prompt-file` must match the user's requested image prompt
-   except for shell escaping/quoting. Only rewrite or enhance it when the user
-   explicitly asks for prompt optimization, style polishing, or agent help. For
-   CLI enhancement, pass `--enhance-prompt`.
-3. For agent-driven generation, prefer `--prompt-file` over `--prompt`. Write
-   the user's prompt verbatim to a UTF-8 text file and call:
+1. Copy the user's image description exactly into a UTF-8 text file. Do not edit
+   the text while copying it.
+2. Generate with `--prompt-file`:
 
    ```bash
    python scripts/generate_images.py --prompt-file /path/to/prompt.txt
    ```
-4. If native image generation is available, generate images directly and save them under `outputs/<timestamp>/images/`.
-5. If the user asks for API mode, or native generation is unavailable and an API key is available from skill `.env`, environment variables, or Codex auth, run:
+
+3. If the user requested a count, size, style label, or output path, pass those
+   as CLI flags. These flags must not change the prompt text.
+4. If no generator is available, run prompt-only mode:
 
    ```bash
-   python scripts/generate_images.py --backend api --prompt-file /path/to/prompt.txt --count 1 --style auto
+   python scripts/generate_images.py --backend prompt-only --prompt-file /path/to/prompt.txt
    ```
-
-6. If no generator is available, run prompt-only mode:
-
-   ```bash
-   python scripts/generate_images.py --backend prompt-only --prompt-file /path/to/prompt.txt --count 1 --style auto
-   ```
-
-7. Return the output directory and mention `index.html`, `manifest.json`, and `prompts.json`.
+5. Return the output directory and mention `index.html`, `manifest.json`, and
+   `prompts.json`.
 
 ## Claude Code Workflow
 
@@ -58,7 +58,8 @@ backend:
 python scripts/generate_images.py doctor
 ```
 
-If `Backend: api`, generate directly:
+If `Backend: api`, copy the user's prompt exactly into `prompt.txt`, then
+generate:
 
 ```bash
 python scripts/generate_images.py --prompt-file prompt.txt --count 1 --style auto
@@ -145,12 +146,9 @@ Supported `--style` values:
 - `social`
 - `avatar`
 
-These are lightweight style directions, not a full template system. Keep
-presets broad and practical. Do not add many narrowly overlapping styles.
-
-Default CLI generation sends the user's prompt as written. `--style` is metadata
-unless `--enhance-prompt` is also set. Use `--enhance-prompt` only when the user
-asks for prompt optimization or style guidance.
+These are metadata labels by default. They do not modify the prompt unless
+`--enhance-prompt` is explicitly set. Avoid using `--enhance-prompt` unless the
+user asks for prompt optimization or style guidance.
 
 ## User Experience Rules
 

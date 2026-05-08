@@ -17,6 +17,7 @@
 - **可审阅输出包**：每次生成或降级都会保留 `index.html`、`manifest.json`、`prompts.json`。
 - **Prompt-only 兜底**：没有可用图片后端时不假装成功，而是输出可复制的 prompt 包。
 - **可选提示词增强**：只有显式使用 `--enhance-prompt` 时，才追加轻量风格方向。
+- **默认不改提示词**：用户输入的图片描述就是最终 prompt。
 
 ---
 
@@ -127,9 +128,9 @@ python scripts/generate_images.py doctor
 
 agent 会按 `SKILL.md` 的流程选择后端、生成或降级，并告诉你输出目录。
 
-Agent 调用时默认应该把你的原始提示词写入 `prompt.txt`，再用
-`--prompt-file prompt.txt` 调用脚本。这样可以避免 agent 在构造命令时把
-提示词扩写成新的营销文案。
+Agent 调用时必须把你的原始提示词逐字写入 `prompt.txt`，再用
+`--prompt-file prompt.txt` 调用脚本。除非你明确要求“优化提示词”，否则
+agent 不应该扩写、翻译、润色或补充新的营销文案。
 
 ### 直接用 CLI
 
