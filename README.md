@@ -127,7 +127,13 @@ python scripts/generate_images.py doctor
 
 agent 会按 `SKILL.md` 的流程选择后端、生成或降级，并告诉你输出目录。
 
+Agent 调用时默认应该把你的原始提示词写入 `prompt.txt`，再用
+`--prompt-file prompt.txt` 调用脚本。这样可以避免 agent 在构造命令时把
+提示词扩写成新的营销文案。
+
 ### 直接用 CLI
+
+短提示词可以直接传 `--prompt`：
 
 ```bash
 python scripts/generate_images.py \

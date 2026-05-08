@@ -28,8 +28,8 @@ Do not require native image libraries, Python packages, Docker, LibreOffice, or 
    except for shell escaping/quoting. Only rewrite or enhance it when the user
    explicitly asks for prompt optimization, style polishing, or agent help. For
    CLI enhancement, pass `--enhance-prompt`.
-3. For long prompts, prompts containing quotes, or prompts where exact wording
-   matters, write the user's prompt verbatim to a UTF-8 text file and call:
+3. For agent-driven generation, prefer `--prompt-file` over `--prompt`. Write
+   the user's prompt verbatim to a UTF-8 text file and call:
 
    ```bash
    python scripts/generate_images.py --prompt-file /path/to/prompt.txt
@@ -38,13 +38,13 @@ Do not require native image libraries, Python packages, Docker, LibreOffice, or 
 5. If the user asks for API mode, or native generation is unavailable and an API key is available from skill `.env`, environment variables, or Codex auth, run:
 
    ```bash
-   python scripts/generate_images.py --backend api --prompt "<request>" --count 1 --style auto
+   python scripts/generate_images.py --backend api --prompt-file /path/to/prompt.txt --count 1 --style auto
    ```
 
 6. If no generator is available, run prompt-only mode:
 
    ```bash
-   python scripts/generate_images.py --backend prompt-only --prompt "<request>" --count 1 --style auto
+   python scripts/generate_images.py --backend prompt-only --prompt-file /path/to/prompt.txt --count 1 --style auto
    ```
 
 7. Return the output directory and mention `index.html`, `manifest.json`, and `prompts.json`.
@@ -59,12 +59,6 @@ python scripts/generate_images.py doctor
 ```
 
 If `Backend: api`, generate directly:
-
-```bash
-python scripts/generate_images.py --prompt "<request>" --count 1 --style auto
-```
-
-For exact long prompts, prefer:
 
 ```bash
 python scripts/generate_images.py --prompt-file prompt.txt --count 1 --style auto
