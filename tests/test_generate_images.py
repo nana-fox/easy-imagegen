@@ -92,6 +92,29 @@ class GenerateImagesTest(unittest.TestCase):
             self.assertIn("Prompt-only output created", result.stdout)
             self.assertIn("ceramic mug", index_html)
 
+    def test_raw_prompt_does_not_append_style_guidance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "run"
+            user_prompt = "A cute little fox exactly as written"
+
+            self.run_script(
+                [
+                    "--prompt",
+                    user_prompt,
+                    "--style",
+                    "illustration",
+                    "--output-dir",
+                    str(output_dir),
+                    "--backend",
+                    "prompt-only",
+                    "--raw-prompt",
+                ]
+            )
+
+            prompts = json.loads((output_dir / "prompts.json").read_text())
+
+            self.assertEqual(prompts["items"][0]["prompt"], user_prompt)
+
     def test_auto_backend_uses_codex_auth_when_available(self):
         with tempfile.TemporaryDirectory() as tmp:
             codex_home = Path(tmp) / "codex-home"

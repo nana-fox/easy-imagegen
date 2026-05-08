@@ -35,6 +35,7 @@ def parse_args():
     parser.add_argument("--output-dir", help="Directory for generated package.")
     parser.add_argument("--backend", default="auto", choices=["auto", "api", "prompt-only"])
     parser.add_argument("--dry-run", action="store_true", help="Resolve backend and write files without calling an API.")
+    parser.add_argument("--raw-prompt", action="store_true", help="Send the prompt exactly as provided, without style guidance.")
     parser.add_argument("--base-url", help="Write this OpenAI-compatible base URL during setup.")
     parser.add_argument("--api-key", help="Write this API key during setup. It is not printed.")
     parser.add_argument("--model", default="gpt-image-2", help="Image model for setup/API generation.")
@@ -47,7 +48,9 @@ def default_output_dir():
     return Path("outputs") / stamp
 
 
-def build_prompt(user_prompt, style, index, count):
+def build_prompt(user_prompt, style, index, count, raw_prompt=False):
+    if raw_prompt:
+        return user_prompt.strip()
     hint = STYLE_HINTS.get(style, STYLE_HINTS["auto"])
     variant = f" Variant {index + 1} of {count}." if count > 1 else ""
     return (
@@ -356,7 +359,7 @@ def main():
                 "id": f"image-{index + 1:02d}",
                 "style": args.style,
                 "size": args.size,
-                "prompt": build_prompt(args.prompt, args.style, index, args.count),
+                "prompt": build_prompt(args.prompt, args.style, index, args.count, args.raw_prompt),
             }
             for index in range(args.count)
         ]

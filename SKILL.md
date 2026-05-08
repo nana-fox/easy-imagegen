@@ -21,7 +21,8 @@ Do not require native image libraries, Python packages, Docker, LibreOffice, or 
 ## Quick Flow
 
 1. Clarify only the missing essentials: subject, use case, count, size, and style.
-2. Create a concise prompt for each requested image.
+2. Create a concise prompt for each requested image. Preserve the user's core wording.
+   If the user asks to use the prompt exactly as written, pass `--raw-prompt`.
 3. If native image generation is available, generate images directly and save them under `outputs/<timestamp>/images/`.
 4. If the user asks for API mode, or native generation is unavailable and an API key is available from skill `.env`, environment variables, or Codex auth, run:
 
@@ -87,7 +88,7 @@ This lets normal Codex users generate images without configuring another key.
 Optional skill-local configuration:
 
 ```env
-IMAGEGEN_BASE_URL=https://api.openai.com/v1
+IMAGEGEN_BASE_URL=
 IMAGEGEN_API_KEY=sk-...
 IMAGEGEN_MODEL=
 IMAGEGEN_QUALITY=high
@@ -133,7 +134,11 @@ Supported `--style` values:
 - `social`
 - `avatar`
 
-Keep presets broad and practical. Do not add many narrowly overlapping styles.
+These are lightweight style directions, not a full template system. Keep
+presets broad and practical. Do not add many narrowly overlapping styles.
+
+Default CLI generation appends a short style direction and quality instruction.
+Use `--raw-prompt` when the user's prompt must be sent exactly as written.
 
 ## User Experience Rules
 
