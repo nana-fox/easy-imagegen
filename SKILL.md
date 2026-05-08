@@ -12,8 +12,9 @@ Use this skill when the user wants to create, iterate on, or package raster imag
 Make image generation feel immediate:
 
 1. Prefer the current agent's native image generation capability when available.
-2. Use a custom OpenAI-compatible API only when the user configured one or explicitly asks for it.
-3. If no generator is available, create a prompt-only package instead of failing.
+2. Reuse Codex auth and provider configuration for OpenAI-compatible API calls when available.
+3. Use a custom OpenAI-compatible API when the user configured one or explicitly asks for it.
+4. If no generator is available, create a prompt-only package instead of failing.
 
 Do not require native image libraries, Python packages, Docker, LibreOffice, or an API key for the default path.
 
@@ -22,7 +23,7 @@ Do not require native image libraries, Python packages, Docker, LibreOffice, or 
 1. Clarify only the missing essentials: subject, use case, count, size, and style.
 2. Create a concise prompt for each requested image.
 3. If native image generation is available, generate images directly and save them under `outputs/<timestamp>/images/`.
-4. If the user asks for API mode, or native generation is unavailable and `IMAGEGEN_API_KEY` is configured, run:
+4. If the user asks for API mode, or native generation is unavailable and an API key is available from skill `.env`, environment variables, or Codex auth, run:
 
    ```bash
    python scripts/generate_images.py --backend api --prompt "<request>" --count 1 --style auto
@@ -46,7 +47,16 @@ Use the agent's built-in image generation tools when present. This path requires
 
 The API backend is optional and uses Python standard library HTTP calls. It expects an OpenAI-compatible `/images/generations` endpoint.
 
-Configuration is read from environment variables or from this skill directory's `.env` file only:
+Configuration is resolved in this order:
+
+1. Environment variables or this skill directory's `.env`.
+2. Codex auth and active provider config:
+   - `~/.codex/auth.json`
+   - `~/.codex/config.toml`
+
+This lets normal Codex users generate images without configuring another key.
+
+Optional skill-local configuration:
 
 ```env
 IMAGEGEN_BASE_URL=https://api.openai.com/v1

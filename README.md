@@ -7,8 +7,9 @@ OpenAI-compatible image API.
 ## What It Does
 
 - Uses the current agent's native image generation capability when available.
-- Falls back to a custom OpenAI-compatible `/images/generations` API when
-  configured.
+- Reuses Codex auth and active provider config for OpenAI-compatible
+  `/images/generations` calls when available.
+- Lets users override with a custom API when needed.
 - Falls back again to a prompt-only output package instead of failing.
 - Writes reviewable outputs: `index.html`, `manifest.json`, and `prompts.json`.
 - Avoids native image dependencies such as Pillow, OpenCV, Docker, LibreOffice,
@@ -54,12 +55,20 @@ outputs/<timestamp>/
   images/
 ```
 
-## Optional API Mode
+## API Mode
+
+Most Codex users do not need to configure anything else. When `IMAGEGEN_API_KEY`
+is not set, the script tries:
+
+- `~/.codex/auth.json` for `OPENAI_API_KEY`
+- `~/.codex/config.toml` for the active provider `base_url`
+
+You can still override per skill or per shell session.
 
 Create `.env` in the skill directory or export environment variables:
 
 ```env
-IMAGEGEN_BASE_URL=https://api.openai.com/v1
+IMAGEGEN_BASE_URL=
 IMAGEGEN_API_KEY=sk-...
 IMAGEGEN_MODEL=gpt-image-1
 IMAGEGEN_QUALITY=high

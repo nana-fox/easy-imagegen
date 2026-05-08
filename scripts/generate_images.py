@@ -6,6 +6,7 @@ import base64
 import html
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -32,6 +33,7 @@ def parse_args():
     parser.add_argument("--size", default="1024x1024", help="Requested image size.")
     parser.add_argument("--output-dir", help="Directory for generated package.")
     parser.add_argument("--backend", default="auto", choices=["auto", "api", "prompt-only"])
+    parser.add_argument("--dry-run", action="store_true", help="Resolve backend and write files without calling an API.")
     return parser.parse_args()
 
 
@@ -55,6 +57,8 @@ def write_json(path, payload):
 
 
 def read_skill_env():
+    if os.environ.get("IMAGEGEN_DISABLE_SKILL_ENV") == "1":
+        return {}
     env_path = Path(__file__).resolve().parents[1] / ".env"
     if not env_path.exists():
         return {}
@@ -69,16 +73,69 @@ def read_skill_env():
     return values
 
 
+def codex_home():
+    return Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+
+
+def read_codex_api_key():
+    auth_path = codex_home() / "auth.json"
+    try:
+        data = json.loads(auth_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return ""
+    return data.get("OPENAI_API_KEY", "")
+
+
+def normalize_base_url(base_url):
+    base_url = base_url.rstrip("/")
+    if base_url and not base_url.endswith("/v1"):
+        base_url += "/v1"
+    return base_url
+
+
+def read_codex_base_url():
+    config_path = codex_home() / "config.toml"
+    try:
+        text = config_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return ""
+
+    provider_match = re.search(r'(?m)^model_provider\s*=\s*"([^"]+)"', text)
+    provider = provider_match.group(1) if provider_match else ""
+    if not provider:
+        return ""
+
+    section_re = re.compile(
+        r'(?ms)^\[model_providers\.' + re.escape(provider) + r'\]\s*(.*?)(?=^\[|\Z)'
+    )
+    section_match = section_re.search(text)
+    if not section_match:
+        return ""
+
+    base_match = re.search(r'(?m)^base_url\s*=\s*"([^"]+)"', section_match.group(1))
+    return normalize_base_url(base_match.group(1)) if base_match else ""
+
+
 def config_value(local_env, key, default=None):
     return os.environ.get(key) or local_env.get(key) or default
 
 
 def api_config():
     local_env = read_skill_env()
-    api_key = config_value(local_env, "IMAGEGEN_API_KEY") or config_value(local_env, "OPENAI_API_KEY")
+    api_key = (
+        config_value(local_env, "IMAGEGEN_API_KEY")
+        or config_value(local_env, "OPENAI_API_KEY")
+        or read_codex_api_key()
+    )
+    base_url = (
+        config_value(local_env, "IMAGEGEN_BASE_URL")
+        or config_value(local_env, "OPENAI_BASE_URL")
+        or read_codex_base_url()
+        or "https://api.openai.com/v1"
+    )
     return {
         "api_key": api_key,
-        "base_url": config_value(local_env, "IMAGEGEN_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
+        "base_url": normalize_base_url(base_url),
         "model": config_value(local_env, "IMAGEGEN_MODEL", "gpt-image-1"),
         "quality": config_value(local_env, "IMAGEGEN_QUALITY", "high"),
     }
@@ -91,6 +148,15 @@ def choose_backend(requested):
     if requested == "api" or config["api_key"]:
         return "api" if config["api_key"] else "prompt-only"
     return "prompt-only"
+
+
+def public_api_config(config):
+    return {
+        "base_url": config["base_url"],
+        "model": config["model"],
+        "quality": config["quality"],
+        "api_key_source": "configured" if config["api_key"] else "missing",
+    }
 
 
 def call_image_api(prompt, size):
@@ -197,11 +263,14 @@ def main():
     }
 
     backend = choose_backend(args.backend)
+    config = api_config()
     status = "ready_for_generation"
     errors = []
     image_files = {}
 
-    if backend == "api":
+    if backend == "api" and args.dry_run:
+        status = "dry_run"
+    elif backend == "api":
         for item in prompts["items"]:
             try:
                 image_bytes = call_image_api(item["prompt"], item["size"])
@@ -223,12 +292,16 @@ def main():
         "images": image_files,
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
+    if backend == "api":
+        manifest["api"] = public_api_config(config)
 
     write_json(output_dir / "prompts.json", prompts)
     write_json(output_dir / "manifest.json", manifest)
     (output_dir / "index.html").write_text(render_gallery(prompts, image_files, manifest), encoding="utf-8")
 
-    if backend == "prompt-only":
+    if args.dry_run:
+        print(f"Dry-run output created: {output_dir}")
+    elif backend == "prompt-only":
         print(f"Prompt-only output created: {output_dir}")
     else:
         print(f"Image output created: {output_dir} ({status})")
