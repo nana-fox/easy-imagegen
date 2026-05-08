@@ -37,6 +37,25 @@ Do not require native image libraries, Python packages, Docker, LibreOffice, or 
 
 6. Return the output directory and mention `index.html`, `manifest.json`, and `prompts.json`.
 
+## Claude Code Workflow
+
+Claude Code usually cannot rely on Codex-native image tools. First diagnose the
+backend:
+
+```bash
+python scripts/generate_images.py doctor
+```
+
+If `Backend: api`, generate directly:
+
+```bash
+python scripts/generate_images.py --prompt "<request>" --count 1 --style auto
+```
+
+If `Backend: prompt-only`, configure `IMAGEGEN_API_KEY` in this skill's `.env`
+or export it in the shell. If the user also has Codex installed, this skill can
+reuse `~/.codex/auth.json` and `~/.codex/config.toml` automatically.
+
 ## Backends
 
 ### Native Agent Backend

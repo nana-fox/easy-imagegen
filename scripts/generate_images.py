@@ -27,7 +27,8 @@ STYLE_HINTS = {
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate an easy-imagegen output package.")
-    parser.add_argument("--prompt", required=True, help="User image request.")
+    parser.add_argument("command", nargs="?", default="generate", choices=["generate", "doctor"])
+    parser.add_argument("--prompt", help="User image request.")
     parser.add_argument("--count", type=int, default=1, help="Number of prompt variants.")
     parser.add_argument("--style", default="auto", help="Style preset name.")
     parser.add_argument("--size", default="1024x1024", help="Requested image size.")
@@ -86,6 +87,21 @@ def read_codex_api_key():
     return data.get("OPENAI_API_KEY", "")
 
 
+def detect_api_key(local_env):
+    if os.environ.get("IMAGEGEN_API_KEY"):
+        return os.environ["IMAGEGEN_API_KEY"], "IMAGEGEN_API_KEY env"
+    if local_env.get("IMAGEGEN_API_KEY"):
+        return local_env["IMAGEGEN_API_KEY"], "skill .env IMAGEGEN_API_KEY"
+    if os.environ.get("OPENAI_API_KEY"):
+        return os.environ["OPENAI_API_KEY"], "OPENAI_API_KEY env"
+    if local_env.get("OPENAI_API_KEY"):
+        return local_env["OPENAI_API_KEY"], "skill .env OPENAI_API_KEY"
+    codex_key = read_codex_api_key()
+    if codex_key:
+        return codex_key, "Codex auth"
+    return "", "missing"
+
+
 def normalize_base_url(base_url):
     base_url = base_url.rstrip("/")
     if base_url and not base_url.endswith("/v1"):
@@ -116,26 +132,34 @@ def read_codex_base_url():
     return normalize_base_url(base_match.group(1)) if base_match else ""
 
 
+def detect_base_url(local_env):
+    if os.environ.get("IMAGEGEN_BASE_URL"):
+        return normalize_base_url(os.environ["IMAGEGEN_BASE_URL"]), "IMAGEGEN_BASE_URL env"
+    if local_env.get("IMAGEGEN_BASE_URL"):
+        return normalize_base_url(local_env["IMAGEGEN_BASE_URL"]), "skill .env IMAGEGEN_BASE_URL"
+    if os.environ.get("OPENAI_BASE_URL"):
+        return normalize_base_url(os.environ["OPENAI_BASE_URL"]), "OPENAI_BASE_URL env"
+    if local_env.get("OPENAI_BASE_URL"):
+        return normalize_base_url(local_env["OPENAI_BASE_URL"]), "skill .env OPENAI_BASE_URL"
+    codex_url = read_codex_base_url()
+    if codex_url:
+        return codex_url, "Codex config"
+    return "https://api.openai.com/v1", "default"
+
+
 def config_value(local_env, key, default=None):
     return os.environ.get(key) or local_env.get(key) or default
 
 
 def api_config():
     local_env = read_skill_env()
-    api_key = (
-        config_value(local_env, "IMAGEGEN_API_KEY")
-        or config_value(local_env, "OPENAI_API_KEY")
-        or read_codex_api_key()
-    )
-    base_url = (
-        config_value(local_env, "IMAGEGEN_BASE_URL")
-        or config_value(local_env, "OPENAI_BASE_URL")
-        or read_codex_base_url()
-        or "https://api.openai.com/v1"
-    )
+    api_key, api_key_source = detect_api_key(local_env)
+    base_url, base_url_source = detect_base_url(local_env)
     return {
         "api_key": api_key,
         "base_url": normalize_base_url(base_url),
+        "api_key_source": api_key_source,
+        "base_url_source": base_url_source,
         "model": config_value(local_env, "IMAGEGEN_MODEL", "gpt-image-1"),
         "quality": config_value(local_env, "IMAGEGEN_QUALITY", "high"),
     }
@@ -155,8 +179,24 @@ def public_api_config(config):
         "base_url": config["base_url"],
         "model": config["model"],
         "quality": config["quality"],
-        "api_key_source": "configured" if config["api_key"] else "missing",
+        "api_key_source": config["api_key_source"] if config["api_key"] else "missing",
+        "base_url_source": config["base_url_source"],
     }
+
+
+def run_doctor():
+    config = api_config()
+    backend = "api" if config["api_key"] else "prompt-only"
+    print(f"Backend: {backend}")
+    print(f"Base URL: {config['base_url']}")
+    print(f"Base URL source: {config['base_url_source']}")
+    print(f"Model: {config['model']}")
+    print(f"Quality: {config['quality']}")
+    if config["api_key"]:
+        print(f"API key: found via {config['api_key_source']}")
+    else:
+        print("API key: missing")
+    return 0
 
 
 def call_image_api(prompt, size):
@@ -242,6 +282,11 @@ def render_gallery(prompts, image_files, manifest):
 
 def main():
     args = parse_args()
+    if args.command == "doctor":
+        return run_doctor()
+    if not args.prompt:
+        print("--prompt is required for generate", file=sys.stderr)
+        return 2
     if args.count < 1:
         print("--count must be at least 1", file=sys.stderr)
         return 2

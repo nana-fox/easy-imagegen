@@ -17,22 +17,54 @@ OpenAI-compatible image API.
 
 ## Install
 
-From a local checkout:
+For Codex:
 
 ```bash
 bash install_as_skill.sh codex
 ```
 
-The skill installs to:
+For Claude Code:
 
-```text
-~/.codex/skills/easy-imagegen
+```bash
+bash install_as_skill.sh claude
 ```
 
 If the skill already exists, replace it explicitly:
 
 ```bash
 bash install_as_skill.sh codex --force
+```
+
+or:
+
+```bash
+bash install_as_skill.sh claude --force
+```
+
+## Check Backend
+
+Run this after installation:
+
+```bash
+python scripts/generate_images.py doctor
+```
+
+Example when a usable API is available:
+
+```text
+Backend: api
+Base URL: https://router.example.com/v1
+Base URL source: Codex config
+Model: gpt-image-1
+Quality: high
+API key: found via Codex auth
+```
+
+Example when no image backend is configured:
+
+```text
+Backend: prompt-only
+API key: missing
 ```
 
 ## Prompt-Only Smoke Test
@@ -64,6 +96,10 @@ is not set, the script tries:
 - `~/.codex/config.toml` for the active provider `base_url`
 
 You can still override per skill or per shell session.
+
+Claude Code users should either configure the skill-local `.env`, export
+environment variables, or let this skill reuse an existing Codex configuration
+if Codex is also installed on the same machine.
 
 Create `.env` in the skill directory or export environment variables:
 

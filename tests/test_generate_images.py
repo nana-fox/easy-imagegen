@@ -113,6 +113,34 @@ class GenerateImagesTest(unittest.TestCase):
             self.assertNotIn("codex-key", (output_dir / "manifest.json").read_text())
             self.assertIn("Dry-run output created", result.stdout)
 
+    def test_doctor_reports_backend_without_leaking_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            codex_home = Path(tmp) / "codex-home"
+            codex_home.mkdir()
+            (codex_home / "auth.json").write_text(
+                json.dumps({"OPENAI_API_KEY": "secret-codex-key"}),
+                encoding="utf-8",
+            )
+            (codex_home / "config.toml").write_text(
+                '\n'.join(
+                    [
+                        'model_provider = "custom"',
+                        "",
+                        "[model_providers.custom]",
+                        'base_url = "https://router.example.com"',
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_script(["doctor"], env={"CODEX_HOME": str(codex_home)})
+
+            self.assertIn("Backend: api", result.stdout)
+            self.assertIn("Base URL: https://router.example.com/v1", result.stdout)
+            self.assertIn("Model: gpt-image-1", result.stdout)
+            self.assertIn("API key: found via Codex auth", result.stdout)
+            self.assertNotIn("secret-codex-key", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
