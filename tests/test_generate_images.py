@@ -1,3 +1,5 @@
+import base64
+import importlib.util
 import json
 import os
 import subprocess
@@ -6,6 +8,7 @@ import tempfile
 import unittest
 
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +23,7 @@ class GenerateImagesTest(unittest.TestCase):
             "IMAGEGEN_BASE_URL",
             "IMAGEGEN_MODEL",
             "IMAGEGEN_QUALITY",
+            "IMAGEGEN_TIMEOUT",
             "OPENAI_API_KEY",
             "OPENAI_BASE_URL",
             "CODEX_HOME",
@@ -43,6 +47,7 @@ class GenerateImagesTest(unittest.TestCase):
             "IMAGEGEN_BASE_URL",
             "IMAGEGEN_MODEL",
             "IMAGEGEN_QUALITY",
+            "IMAGEGEN_TIMEOUT",
             "OPENAI_API_KEY",
             "OPENAI_BASE_URL",
             "CODEX_HOME",
@@ -67,6 +72,7 @@ class GenerateImagesTest(unittest.TestCase):
             "IMAGEGEN_BASE_URL",
             "IMAGEGEN_MODEL",
             "IMAGEGEN_QUALITY",
+            "IMAGEGEN_TIMEOUT",
             "OPENAI_API_KEY",
             "OPENAI_BASE_URL",
             "CODEX_HOME",
@@ -83,6 +89,12 @@ class GenerateImagesTest(unittest.TestCase):
             env=clean_env,
             cwd=skill_dir,
         )
+
+    def load_script_module(self):
+        spec = importlib.util.spec_from_file_location("generate_images_under_test", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
 
     def test_prompt_only_backend_writes_reviewable_output(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -190,6 +202,67 @@ class GenerateImagesTest(unittest.TestCase):
 
             self.assertEqual(prompts["items"][0]["prompt"], user_prompt)
 
+    def test_api_generation_uses_long_default_timeout(self):
+        module = self.load_script_module()
+        image_payload = base64.b64encode(b"fake-png").decode("ascii")
+        timeouts = []
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, _exc_type, _exc, _traceback):
+                return False
+
+            def read(self):
+                return json.dumps({"data": [{"b64_json": image_payload}]}).encode("utf-8")
+
+        def fake_urlopen(_request, timeout):
+            timeouts.append(timeout)
+            return FakeResponse()
+
+        env = {
+            "IMAGEGEN_DISABLE_SKILL_ENV": "1",
+            "IMAGEGEN_API_KEY": "test-key",
+            "IMAGEGEN_BASE_URL": "https://router.example.com/v1",
+        }
+        with mock.patch.dict(os.environ, env, clear=False):
+            with mock.patch.object(module.urllib.request, "urlopen", side_effect=fake_urlopen):
+                self.assertEqual(module.call_image_api("A cute little fox", "1024x1024"), b"fake-png")
+
+        self.assertEqual(timeouts, [600])
+
+    def test_api_timeout_can_be_configured_by_environment(self):
+        module = self.load_script_module()
+        image_payload = base64.b64encode(b"fake-png").decode("ascii")
+        timeouts = []
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, _exc_type, _exc, _traceback):
+                return False
+
+            def read(self):
+                return json.dumps({"data": [{"b64_json": image_payload}]}).encode("utf-8")
+
+        def fake_urlopen(_request, timeout):
+            timeouts.append(timeout)
+            return FakeResponse()
+
+        env = {
+            "IMAGEGEN_DISABLE_SKILL_ENV": "1",
+            "IMAGEGEN_API_KEY": "test-key",
+            "IMAGEGEN_BASE_URL": "https://router.example.com/v1",
+            "IMAGEGEN_TIMEOUT": "900",
+        }
+        with mock.patch.dict(os.environ, env, clear=False):
+            with mock.patch.object(module.urllib.request, "urlopen", side_effect=fake_urlopen):
+                self.assertEqual(module.call_image_api("A cute little fox", "1024x1024"), b"fake-png")
+
+        self.assertEqual(timeouts, [900])
+
     def test_auto_backend_uses_codex_auth_when_available(self):
         with tempfile.TemporaryDirectory() as tmp:
             codex_home = Path(tmp) / "codex-home"
@@ -290,6 +363,7 @@ class GenerateImagesTest(unittest.TestCase):
             env_text = (skill_dir / ".env").read_text(encoding="utf-8")
             self.assertIn("IMAGEGEN_BASE_URL=https://router.example.com/v1", env_text)
             self.assertIn("IMAGEGEN_API_KEY=secret-user-key", env_text)
+            self.assertIn("IMAGEGEN_TIMEOUT=600", env_text)
             self.assertNotIn("secret-user-key", result.stdout)
 
             doctor = self.run_installed_like_script(

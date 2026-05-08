@@ -41,6 +41,7 @@ def parse_args():
     parser.add_argument("--api-key", help="Write this API key during setup. It is not printed.")
     parser.add_argument("--model", default="gpt-image-2", help="Image model for setup/API generation.")
     parser.add_argument("--quality", default="high", help="Image quality for setup/API generation.")
+    parser.add_argument("--timeout", default="600", help="API request timeout in seconds for setup/API generation.")
     return parser.parse_args()
 
 
@@ -163,6 +164,15 @@ def config_value(local_env, key, default=None):
     return os.environ.get(key) or local_env.get(key) or default
 
 
+def config_int(local_env, key, default):
+    value = config_value(local_env, key, str(default))
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
 def api_config():
     local_env = read_skill_env()
     api_key, api_key_source = detect_api_key(local_env)
@@ -174,6 +184,7 @@ def api_config():
         "base_url_source": base_url_source,
         "model": config_value(local_env, "IMAGEGEN_MODEL", "gpt-image-2"),
         "quality": config_value(local_env, "IMAGEGEN_QUALITY", "high"),
+        "timeout": config_int(local_env, "IMAGEGEN_TIMEOUT", 600),
     }
 
 
@@ -191,6 +202,7 @@ def public_api_config(config):
         "base_url": config["base_url"],
         "model": config["model"],
         "quality": config["quality"],
+        "timeout": config["timeout"],
         "api_key_source": config["api_key_source"] if config["api_key"] else "missing",
         "base_url_source": config["base_url_source"],
     }
@@ -204,6 +216,7 @@ def run_doctor():
     print(f"Base URL source: {config['base_url_source']}")
     print(f"Model: {config['model']}")
     print(f"Quality: {config['quality']}")
+    print(f"Timeout: {config['timeout']}s")
     if config["api_key"]:
         print(f"API key: found via {config['api_key_source']}")
     else:
@@ -223,7 +236,7 @@ def prompt_if_missing(value, label, secret=False):
     return input(f"{label}: ").strip()
 
 
-def write_skill_env(base_url, api_key, model, quality):
+def write_skill_env(base_url, api_key, model, quality, timeout):
     env_path = skill_root() / ".env"
     content = "\n".join(
         [
@@ -231,6 +244,7 @@ def write_skill_env(base_url, api_key, model, quality):
             f"IMAGEGEN_API_KEY={api_key}",
             f"IMAGEGEN_MODEL={model}",
             f"IMAGEGEN_QUALITY={quality}",
+            f"IMAGEGEN_TIMEOUT={timeout}",
             "",
         ]
     )
@@ -247,11 +261,13 @@ def run_setup(args):
     api_key = prompt_if_missing(args.api_key, "api_key", secret=True)
     model = args.model or "gpt-image-2"
     quality = args.quality or "high"
-    env_path = write_skill_env(base_url, api_key, model, quality)
+    timeout = args.timeout or "600"
+    env_path = write_skill_env(base_url, api_key, model, quality, timeout)
     print(f"Config written: {env_path}")
     print(f"Base URL: {normalize_base_url(base_url)}")
     print(f"Model: {model}")
     print(f"Quality: {quality}")
+    print(f"Timeout: {timeout}s")
     print("API key: saved")
     return 0
 
@@ -284,14 +300,14 @@ def call_image_api(prompt, size):
         },
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=120) as response:
+    with urllib.request.urlopen(request, timeout=config["timeout"]) as response:
         data = json.loads(response.read().decode("utf-8"))
 
     item = data.get("data", [{}])[0]
     if item.get("b64_json"):
         return base64.b64decode(item["b64_json"])
     if item.get("url"):
-        with urllib.request.urlopen(item["url"], timeout=120) as image_response:
+        with urllib.request.urlopen(item["url"], timeout=config["timeout"]) as image_response:
             return image_response.read()
     raise RuntimeError("Image API response did not include b64_json or url")
 

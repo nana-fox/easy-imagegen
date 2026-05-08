@@ -103,7 +103,8 @@ python scripts/generate_images.py setup \
   --base-url "https://router.example.com/v1" \
   --api-key "$IMAGEGEN_API_KEY" \
   --model gpt-image-2 \
-  --quality high
+  --quality high \
+  --timeout 600
 ```
 
 `setup` 只写当前 skill 目录的 `.env`，不会打印 API key。
@@ -243,9 +244,12 @@ IMAGEGEN_BASE_URL=
 IMAGEGEN_API_KEY=sk-...
 IMAGEGEN_MODEL=
 IMAGEGEN_QUALITY=high
+IMAGEGEN_TIMEOUT=600
 ```
 
 留空 `IMAGEGEN_MODEL` 时使用脚本默认值 `gpt-image-2`。
+
+`IMAGEGEN_TIMEOUT` 默认是 600 秒。图片生成经常需要几分钟，Claude Code / Codex 调用时也应该给外层命令足够长的等待时间，或者后台运行后再读取输出目录。
 
 ---
 

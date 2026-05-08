@@ -115,6 +115,7 @@ IMAGEGEN_BASE_URL=
 IMAGEGEN_API_KEY=sk-...
 IMAGEGEN_MODEL=
 IMAGEGEN_QUALITY=high
+IMAGEGEN_TIMEOUT=600
 ```
 
 Compatibility aliases are also accepted:
@@ -169,6 +170,7 @@ normal use; use `--enhance-prompt` only when a fixed style hint is useful.
 - Do not install dependencies for the default flow.
 - Do not expose backend details unless needed to recover from failure.
 - Keep the user-facing interaction simple: the user describes the desired image; the agent handles prompt shape, backend, output files, and reporting.
+- Image generation can take several minutes. Run generation commands with at least a 10-minute shell/tool timeout or in the background, then inspect the output directory.
 - For multiple images, generate or package a small first batch when the direction is uncertain.
 - Always preserve the final prompt text in `prompts.json`.
 - Write normal results under the user's current directory unless `--output-dir` is explicit.
