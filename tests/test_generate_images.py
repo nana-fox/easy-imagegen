@@ -88,14 +88,17 @@ class GenerateImagesTest(unittest.TestCase):
             self.assertEqual(manifest["count"], 2)
             self.assertEqual(len(prompts["items"]), 2)
             self.assertEqual(prompts["items"][0]["style"], "product")
-            self.assertIn("ceramic mug", prompts["items"][0]["prompt"])
+            self.assertEqual(
+                prompts["items"][0]["prompt"],
+                "A clean product photo of a ceramic mug on a desk",
+            )
             self.assertIn("Prompt-only output created", result.stdout)
             self.assertIn("ceramic mug", index_html)
 
-    def test_raw_prompt_does_not_append_style_guidance(self):
+    def test_enhance_prompt_appends_style_guidance_when_requested(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "run"
-            user_prompt = "A cute little fox exactly as written"
+            user_prompt = "A cute little fox"
 
             self.run_script(
                 [
@@ -107,13 +110,14 @@ class GenerateImagesTest(unittest.TestCase):
                     str(output_dir),
                     "--backend",
                     "prompt-only",
-                    "--raw-prompt",
+                    "--enhance-prompt",
                 ]
             )
 
             prompts = json.loads((output_dir / "prompts.json").read_text())
 
-            self.assertEqual(prompts["items"][0]["prompt"], user_prompt)
+            self.assertIn(user_prompt, prompts["items"][0]["prompt"])
+            self.assertIn("Style direction:", prompts["items"][0]["prompt"])
 
     def test_auto_backend_uses_codex_auth_when_available(self):
         with tempfile.TemporaryDirectory() as tmp:

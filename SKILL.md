@@ -21,8 +21,9 @@ Do not require native image libraries, Python packages, Docker, LibreOffice, or 
 ## Quick Flow
 
 1. Clarify only the missing essentials: subject, use case, count, size, and style.
-2. Create a concise prompt for each requested image. Preserve the user's core wording.
-   If the user asks to use the prompt exactly as written, pass `--raw-prompt`.
+2. Use the user's prompt as written by default. Only rewrite or enhance it when
+   the user explicitly asks for prompt optimization, style polishing, or agent
+   help. For CLI enhancement, pass `--enhance-prompt`.
 3. If native image generation is available, generate images directly and save them under `outputs/<timestamp>/images/`.
 4. If the user asks for API mode, or native generation is unavailable and an API key is available from skill `.env`, environment variables, or Codex auth, run:
 
@@ -137,8 +138,9 @@ Supported `--style` values:
 These are lightweight style directions, not a full template system. Keep
 presets broad and practical. Do not add many narrowly overlapping styles.
 
-Default CLI generation appends a short style direction and quality instruction.
-Use `--raw-prompt` when the user's prompt must be sent exactly as written.
+Default CLI generation sends the user's prompt as written. `--style` is metadata
+unless `--enhance-prompt` is also set. Use `--enhance-prompt` only when the user
+asks for prompt optimization or style guidance.
 
 ## User Experience Rules
 

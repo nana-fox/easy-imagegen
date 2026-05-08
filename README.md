@@ -8,7 +8,7 @@
 
 ## 能做什么
 
-- **一句话出图**：把自然语言需求整理成稳定 prompt，并保存输出结果。
+- **一句话出图**：默认按用户给的 prompt 生成，并保存输出结果。
 - **默认 `gpt-image-2`**：未显式配置 `IMAGEGEN_MODEL` 时使用 `gpt-image-2`。
 - **Codex 零配置优先**：自动读取 `~/.codex/auth.json` 和 `~/.codex/config.toml`，复用当前 Codex API key 与 provider `base_url`。
 - **Claude Code 可一次配置**：没有 Codex 配置时，用 `setup` 写入 skill-local `.env`。
@@ -16,7 +16,7 @@
 - **不会误吃密钥**：只读取环境变量、skill 自己目录的 `.env`、Codex auth/config；不会向上递归读取项目根目录 `.env`。
 - **可审阅输出包**：每次生成或降级都会保留 `index.html`、`manifest.json`、`prompts.json`。
 - **Prompt-only 兜底**：没有可用图片后端时不假装成功，而是输出可复制的 prompt 包。
-- **可选原样提示词**：默认会追加轻量风格方向；需要完全按原文生成时使用 `--raw-prompt`。
+- **可选提示词增强**：只有显式使用 `--enhance-prompt` 时，才追加轻量风格方向。
 
 ---
 
@@ -136,12 +136,14 @@ python scripts/generate_images.py \
   --style illustration
 ```
 
-如果你希望完全按输入提示词生成，不追加任何风格说明：
+默认会完全按输入提示词生成，不追加任何风格说明。
+如果你希望让脚本追加一小段风格和质量方向：
 
 ```bash
 python scripts/generate_images.py \
   --prompt "A cute little fox, warm children's book illustration" \
-  --raw-prompt
+  --style illustration \
+  --enhance-prompt
 ```
 
 指定输出目录：
@@ -216,7 +218,7 @@ IMAGEGEN_QUALITY=high
 
 ## 风格预设
 
-当前内置轻量风格确实存在于 `styles/` 目录中，但它们不是复杂模板库，而是用于给 prompt 追加一小段方向提示：
+当前内置轻量风格确实存在于 `styles/` 目录中，但它们不是复杂模板库。默认生成不会自动使用这些风格改写 prompt；只有传入 `--enhance-prompt` 时，脚本才会追加一小段方向提示：
 
 | 风格 | 适用场景 |
 | --- | --- |
@@ -227,7 +229,7 @@ IMAGEGEN_QUALITY=high
 | `social` | 社媒图、小红书/推文配图 |
 | `avatar` | 头像、角色、标识性图像 |
 
-脚本当前内置的实际风格提示在 `scripts/generate_images.py` 的 `STYLE_HINTS` 中，`styles/*.md` 是给 agent 和用户阅读的说明文件。默认生成时最终 prompt 会是：
+脚本当前内置的实际风格提示在 `scripts/generate_images.py` 的 `STYLE_HINTS` 中，`styles/*.md` 是给 agent 和用户阅读的说明文件。使用 `--enhance-prompt` 时最终 prompt 会是：
 
 ```text
 <你的原始提示词>
@@ -236,7 +238,7 @@ Style direction: <所选风格的一句话方向>
 Create a high-quality raster image. Avoid text unless explicitly requested.
 ```
 
-使用 `--raw-prompt` 时不会追加这些内容。
+不使用 `--enhance-prompt` 时，最终 prompt 就是用户输入的文本。
 
 ---
 
