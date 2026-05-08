@@ -59,7 +59,7 @@ with the setup command:
 python scripts/generate_images.py setup \
   --base-url "https://router.example.com/v1" \
   --api-key "<key>" \
-  --model "gpt-image-1"
+  --model "gpt-image-2"
 ```
 
 If the user also has Codex installed, this skill can reuse
@@ -89,7 +89,7 @@ Optional skill-local configuration:
 ```env
 IMAGEGEN_BASE_URL=https://api.openai.com/v1
 IMAGEGEN_API_KEY=sk-...
-IMAGEGEN_MODEL=gpt-image-1
+IMAGEGEN_MODEL=
 IMAGEGEN_QUALITY=high
 ```
 

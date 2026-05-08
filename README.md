@@ -55,7 +55,7 @@ Example when a usable API is available:
 Backend: api
 Base URL: https://router.example.com/v1
 Base URL source: Codex config
-Model: gpt-image-1
+Model: gpt-image-2
 Quality: high
 API key: found via Codex auth
 ```
@@ -76,7 +76,7 @@ cd ~/.claude/skills/easy-imagegen
 python scripts/generate_images.py setup \
   --base-url "https://router.example.com/v1" \
   --api-key "$IMAGEGEN_API_KEY" \
-  --model gpt-image-1 \
+  --model gpt-image-2 \
   --quality high
 ```
 
@@ -127,7 +127,7 @@ Create `.env` in the skill directory or export environment variables:
 ```env
 IMAGEGEN_BASE_URL=
 IMAGEGEN_API_KEY=sk-...
-IMAGEGEN_MODEL=gpt-image-1
+IMAGEGEN_MODEL=
 IMAGEGEN_QUALITY=high
 ```
 

@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument("--dry-run", action="store_true", help="Resolve backend and write files without calling an API.")
     parser.add_argument("--base-url", help="Write this OpenAI-compatible base URL during setup.")
     parser.add_argument("--api-key", help="Write this API key during setup. It is not printed.")
-    parser.add_argument("--model", default="gpt-image-1", help="Image model for setup/API generation.")
+    parser.add_argument("--model", default="gpt-image-2", help="Image model for setup/API generation.")
     parser.add_argument("--quality", default="high", help="Image quality for setup/API generation.")
     return parser.parse_args()
 
@@ -168,7 +168,7 @@ def api_config():
         "base_url": normalize_base_url(base_url),
         "api_key_source": api_key_source,
         "base_url_source": base_url_source,
-        "model": config_value(local_env, "IMAGEGEN_MODEL", "gpt-image-1"),
+        "model": config_value(local_env, "IMAGEGEN_MODEL", "gpt-image-2"),
         "quality": config_value(local_env, "IMAGEGEN_QUALITY", "high"),
     }
 
@@ -241,7 +241,7 @@ def write_skill_env(base_url, api_key, model, quality):
 def run_setup(args):
     base_url = prompt_if_missing(args.base_url, "base_url")
     api_key = prompt_if_missing(args.api_key, "api_key", secret=True)
-    model = args.model or "gpt-image-1"
+    model = args.model or "gpt-image-2"
     quality = args.quality or "high"
     env_path = write_skill_env(base_url, api_key, model, quality)
     print(f"Config written: {env_path}")

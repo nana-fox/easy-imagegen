@@ -133,7 +133,7 @@ class GenerateImagesTest(unittest.TestCase):
             self.assertEqual(manifest["backend"], "api")
             self.assertEqual(manifest["status"], "dry_run")
             self.assertEqual(manifest["api"]["base_url"], "https://router.example.com/v1")
-            self.assertEqual(manifest["api"]["model"], "gpt-image-1")
+            self.assertEqual(manifest["api"]["model"], "gpt-image-2")
             self.assertNotIn("codex-key", (output_dir / "manifest.json").read_text())
             self.assertIn("Dry-run output created", result.stdout)
 
@@ -161,7 +161,7 @@ class GenerateImagesTest(unittest.TestCase):
 
             self.assertIn("Backend: api", result.stdout)
             self.assertIn("Base URL: https://router.example.com/v1", result.stdout)
-            self.assertIn("Model: gpt-image-1", result.stdout)
+            self.assertIn("Model: gpt-image-2", result.stdout)
             self.assertIn("API key: found via Codex auth", result.stdout)
             self.assertNotIn("secret-codex-key", result.stdout)
 
@@ -182,7 +182,7 @@ class GenerateImagesTest(unittest.TestCase):
                     "--api-key",
                     "secret-user-key",
                     "--model",
-                    "gpt-image-1",
+                    "gpt-image-2",
                     "--quality",
                     "high",
                 ],
