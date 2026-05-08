@@ -27,7 +27,7 @@ STYLE_HINTS = {
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate an easy-imagegen output package.")
-    parser.add_argument("command", nargs="?", default="generate", choices=["generate", "doctor"])
+    parser.add_argument("command", nargs="?", default="generate", choices=["generate", "doctor", "setup"])
     parser.add_argument("--prompt", help="User image request.")
     parser.add_argument("--count", type=int, default=1, help="Number of prompt variants.")
     parser.add_argument("--style", default="auto", help="Style preset name.")
@@ -35,6 +35,10 @@ def parse_args():
     parser.add_argument("--output-dir", help="Directory for generated package.")
     parser.add_argument("--backend", default="auto", choices=["auto", "api", "prompt-only"])
     parser.add_argument("--dry-run", action="store_true", help="Resolve backend and write files without calling an API.")
+    parser.add_argument("--base-url", help="Write this OpenAI-compatible base URL during setup.")
+    parser.add_argument("--api-key", help="Write this API key during setup. It is not printed.")
+    parser.add_argument("--model", default="gpt-image-1", help="Image model for setup/API generation.")
+    parser.add_argument("--quality", default="high", help="Image quality for setup/API generation.")
     return parser.parse_args()
 
 
@@ -57,10 +61,14 @@ def write_json(path, payload):
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def skill_root():
+    return Path(__file__).resolve().parents[1]
+
+
 def read_skill_env():
     if os.environ.get("IMAGEGEN_DISABLE_SKILL_ENV") == "1":
         return {}
-    env_path = Path(__file__).resolve().parents[1] / ".env"
+    env_path = skill_root() / ".env"
     if not env_path.exists():
         return {}
 
@@ -199,6 +207,51 @@ def run_doctor():
     return 0
 
 
+def prompt_if_missing(value, label, secret=False):
+    if value:
+        return value
+    if not sys.stdin.isatty():
+        raise SystemExit(f"Missing {label}. Pass --{label.replace('_', '-')} for non-interactive setup.")
+    if secret:
+        import getpass
+
+        return getpass.getpass(f"{label}: ").strip()
+    return input(f"{label}: ").strip()
+
+
+def write_skill_env(base_url, api_key, model, quality):
+    env_path = skill_root() / ".env"
+    content = "\n".join(
+        [
+            f"IMAGEGEN_BASE_URL={normalize_base_url(base_url)}",
+            f"IMAGEGEN_API_KEY={api_key}",
+            f"IMAGEGEN_MODEL={model}",
+            f"IMAGEGEN_QUALITY={quality}",
+            "",
+        ]
+    )
+    env_path.write_text(content, encoding="utf-8")
+    try:
+        env_path.chmod(0o600)
+    except OSError:
+        pass
+    return env_path
+
+
+def run_setup(args):
+    base_url = prompt_if_missing(args.base_url, "base_url")
+    api_key = prompt_if_missing(args.api_key, "api_key", secret=True)
+    model = args.model or "gpt-image-1"
+    quality = args.quality or "high"
+    env_path = write_skill_env(base_url, api_key, model, quality)
+    print(f"Config written: {env_path}")
+    print(f"Base URL: {normalize_base_url(base_url)}")
+    print(f"Model: {model}")
+    print(f"Quality: {quality}")
+    print("API key: saved")
+    return 0
+
+
 def call_image_api(prompt, size):
     config = api_config()
     payload = {
@@ -284,6 +337,8 @@ def main():
     args = parse_args()
     if args.command == "doctor":
         return run_doctor()
+    if args.command == "setup":
+        return run_setup(args)
     if not args.prompt:
         print("--prompt is required for generate", file=sys.stderr)
         return 2

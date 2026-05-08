@@ -53,8 +53,17 @@ python scripts/generate_images.py --prompt "<request>" --count 1 --style auto
 ```
 
 If `Backend: prompt-only`, configure `IMAGEGEN_API_KEY` in this skill's `.env`
-or export it in the shell. If the user also has Codex installed, this skill can
-reuse `~/.codex/auth.json` and `~/.codex/config.toml` automatically.
+with the setup command:
+
+```bash
+python scripts/generate_images.py setup \
+  --base-url "https://router.example.com/v1" \
+  --api-key "<key>" \
+  --model "gpt-image-1"
+```
+
+If the user also has Codex installed, this skill can reuse
+`~/.codex/auth.json` and `~/.codex/config.toml` automatically.
 
 ## Backends
 
@@ -91,6 +100,13 @@ OPENAI_API_KEY=sk-...
 ```
 
 Do not read project-root `.env` files. This avoids accidentally using unrelated application secrets.
+
+Use `setup` for one-time local configuration. It writes only this skill's `.env`
+and does not print the API key:
+
+```bash
+python scripts/generate_images.py setup --base-url "https://router.example.com/v1" --api-key "<key>"
+```
 
 ### Prompt-Only Backend
 

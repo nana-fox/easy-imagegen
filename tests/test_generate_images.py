@@ -36,6 +36,30 @@ class GenerateImagesTest(unittest.TestCase):
             env=clean_env,
         )
 
+    def run_installed_like_script(self, skill_dir, args, env=None):
+        clean_env = os.environ.copy()
+        for key in (
+            "IMAGEGEN_API_KEY",
+            "IMAGEGEN_BASE_URL",
+            "IMAGEGEN_MODEL",
+            "IMAGEGEN_QUALITY",
+            "OPENAI_API_KEY",
+            "OPENAI_BASE_URL",
+            "CODEX_HOME",
+            "IMAGEGEN_DISABLE_SKILL_ENV",
+        ):
+            clean_env.pop(key, None)
+        if env:
+            clean_env.update(env)
+        return subprocess.run(
+            [sys.executable, str(skill_dir / "scripts" / "generate_images.py"), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=clean_env,
+            cwd=skill_dir,
+        )
+
     def test_prompt_only_backend_writes_reviewable_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "run"
@@ -140,6 +164,46 @@ class GenerateImagesTest(unittest.TestCase):
             self.assertIn("Model: gpt-image-1", result.stdout)
             self.assertIn("API key: found via Codex auth", result.stdout)
             self.assertNotIn("secret-codex-key", result.stdout)
+
+    def test_setup_writes_skill_env_and_doctor_uses_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = Path(tmp) / "skill"
+            skill_dir.mkdir()
+            (skill_dir / "scripts").mkdir()
+            temp_script = skill_dir / "scripts" / "generate_images.py"
+            temp_script.write_text(SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
+
+            result = self.run_installed_like_script(
+                skill_dir,
+                [
+                    "setup",
+                    "--base-url",
+                    "https://router.example.com",
+                    "--api-key",
+                    "secret-user-key",
+                    "--model",
+                    "gpt-image-1",
+                    "--quality",
+                    "high",
+                ],
+                env={"CODEX_HOME": str(Path(tmp) / "missing-codex")},
+            )
+
+            env_text = (skill_dir / ".env").read_text(encoding="utf-8")
+            self.assertIn("IMAGEGEN_BASE_URL=https://router.example.com/v1", env_text)
+            self.assertIn("IMAGEGEN_API_KEY=secret-user-key", env_text)
+            self.assertNotIn("secret-user-key", result.stdout)
+
+            doctor = self.run_installed_like_script(
+                skill_dir,
+                ["doctor"],
+                env={"CODEX_HOME": str(Path(tmp) / "missing-codex")},
+            )
+
+            self.assertIn("Backend: api", doctor.stdout)
+            self.assertIn("Base URL: https://router.example.com/v1", doctor.stdout)
+            self.assertIn("API key: found via skill .env IMAGEGEN_API_KEY", doctor.stdout)
+            self.assertNotIn("secret-user-key", doctor.stdout)
 
 
 if __name__ == "__main__":

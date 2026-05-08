@@ -67,6 +67,27 @@ Backend: prompt-only
 API key: missing
 ```
 
+## One-Time Setup
+
+For Claude Code users without an existing Codex key/config, run:
+
+```bash
+cd ~/.claude/skills/easy-imagegen
+python scripts/generate_images.py setup \
+  --base-url "https://router.example.com/v1" \
+  --api-key "$IMAGEGEN_API_KEY" \
+  --model gpt-image-1 \
+  --quality high
+```
+
+The command writes only this skill's `.env` and does not print the API key.
+
+Then verify:
+
+```bash
+python scripts/generate_images.py doctor
+```
+
 ## Prompt-Only Smoke Test
 
 ```bash
@@ -97,9 +118,9 @@ is not set, the script tries:
 
 You can still override per skill or per shell session.
 
-Claude Code users should either configure the skill-local `.env`, export
-environment variables, or let this skill reuse an existing Codex configuration
-if Codex is also installed on the same machine.
+Claude Code users should run `setup`, export environment variables, or let this
+skill reuse an existing Codex configuration if Codex is also installed on the
+same machine.
 
 Create `.env` in the skill directory or export environment variables:
 
